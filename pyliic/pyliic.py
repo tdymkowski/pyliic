@@ -140,6 +140,6 @@ def main():
 
     positions = positions * ANG2AU
     q_r = q_r * ANG2AU
-    G = get_G_matrix(q_r, q_phi, positions, masses, plot=True, save_op=True, method="fd")
+    G = get_G_matrix(q_r, q_phi, positions, masses, plot=False, save_op=False, method="fd")
 
     write_xyz_traj("liic_path_pt_rot.xyz", traj_grid.flatten())
