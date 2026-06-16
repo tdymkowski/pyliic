@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 import numpy as np
+import qdio.qd_file_op as qdop
 from scipy.interpolate import CubicSpline, PchipInterpolator
 import matplotlib.pyplot as plt
 
@@ -109,20 +110,65 @@ def plot_G_matrix(q1, q2, G, invG=None, **kwargs):
             plt.show()
 
 
-def get_G_matrix(qr, q_phi, positions, masses, edge_order=2, method="cubic", plot=False, **kwargs):
-    n_r, n_phi, n_atoms, ndim = positions.shape
+def get_G_matrix(q1, q2, positions, masses, edge_order=2, method="cubic", plot=False, save_op=False, **kwargs):
+    n_q1, n_q2, n_atoms, ndim = positions.shape
 
-    dx_dr = get_dxdq(qr, positions, method=method, axis=0)
-    dx_dphi = get_dxdq(q_phi, positions, method=method, axis=1)
-    invG = np.zeros((n_r, n_phi, 2, 2))
+    dx_dq1 = get_dxdq(q1, positions, method=method, axis=0)
+    dx_dq2 = get_dxdq(q2, positions, method=method, axis=1)
+    invG = np.zeros((n_q1, n_q2, 2, 2))
 
-    invG[:, :, 0, 0] = np.sum(masses[None, None, :, None] * dx_dr * dx_dr, axis=(2, 3))
-    invG[:, :, 1, 1] = np.sum(masses[None, None, :, None] * dx_dphi * dx_dphi, axis=(2, 3))
-    invG[:, :, 0, 1] = invG[:, :, 1, 0] = np.sum(masses[None, None, :, None] * dx_dr * dx_dphi, axis=(2, 3))
+    invG[:, :, 0, 0] = np.sum(masses[None, None, :, None] * dx_dq1 * dx_dq1, axis=(2, 3))
+    invG[:, :, 1, 1] = np.sum(masses[None, None, :, None] * dx_dq2 * dx_dq2, axis=(2, 3))
+    invG[:, :, 0, 1] = invG[:, :, 1, 0] = np.sum(masses[None, None, :, None] * dx_dq1 * dx_dq2, axis=(2, 3))
 
     G = np.linalg.inv(invG)
-
+    if save_op:
+        meta = {"class": "OGridMat", "dim":
+                [ {"xmin": np.min(q1), "xmax": np.max(q1)},
+                  {"xmin": np.min(q2), "xmax": np.max(q2)}
+                ] }
+        opreader = qdop.FileOP()
+        names = []
+        for i in range(2):
+            for j in range(2):
+                gmat_idx = f"{i}{j}"
+                fname = f"gmat_{gmat_idx}.op"
+                names.append(fname)
+                opreader.write(fname, G[:, :, i, j], meta)
+        print("G matrix written to: ")
+        for name in names:
+            print(f"{name:>15s}")
     if plot:
-        plot_G_matrix(qr, q_phi, G, **kwargs)
+        plot_G_matrix(q1, q2, G, **kwargs)
 
     return G
+
+
+def read_G_matrix_operators(names=None, **kwargs):
+    if names is None:
+        names = []
+        for i in range(2):
+            for j in range(2):
+                name = f"gmat_{i}{j}.op"
+                names.append(name)
+    opreader = qdop.FileOP()
+    comps = []
+    meta = None
+    for name in names:
+        op, meta_read = opreader.read(name)
+        if meta is None:
+            meta = meta_read
+        comps.append(op)
+    
+    n_q1 = meta["dim"][0].size
+    n_q2 = meta["dim"][1].size
+    
+    q1 = np.linspace(meta["dim"][0].xmin, meta["dim"][0].xmax, n_q1)
+    q2 = np.linspace(meta["dim"][1].xmin, meta["dim"][1].xmax, n_q2)
+    
+    G = np.asarray(comps)               # (4, n_q1, n_q2)
+    G = G.reshape(2, 2, n_q1, n_q2)    # (2, 2, n_q1, n_q2)
+    G = np.moveaxis(G, (0, 1), (-2, -1))  # (n_q1, n_q2, 2, 2)
+
+    plot_G_matrix(q1, q2, G, **kwargs)
+

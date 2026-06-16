@@ -67,6 +67,7 @@ def get_A_matrix(positions, masses, ref_idx=0, scaffold=None):
 
 
 def rotational_eckart(positions: np.ndarray, masses: np.ndarray , ref_idx=0, min_eigen=False, scaffold=None):
+    # based on https://doi.org/10.1002/jcc.20110
     # get coorelation matrix
     A = get_A_matrix(positions, masses, ref_idx=ref_idx, scaffold=scaffold)
     # get F matrix

@@ -82,12 +82,12 @@ def make_distance_dihedral_grid(traj_r, dihedral_indices, moving_indices, phi_gr
 
     for base_geom in traj_r:
         row = []
-
         for phi in phi_grid_deg:
             atoms = base_geom.copy()
             atoms.set_dihedral(*dihedral_indices, phi, indices=moving_indices)
             row.append(atoms)
         grid.append(row)
+
     n_r = len(traj_r)
     n_phi = len(phi_grid_deg)
     flat_grid = [geom for row in grid for geom in row]
@@ -111,7 +111,6 @@ def main():
 
     indices = [2, 1, 10, 11]
     dihedral_indices = [4, 3, 9, 2]
-    ring_indices = [3, 4, 5, 6, 7, 8]
 
     react = xyz_lst[0]
     masses = react.get_masses_au()
@@ -124,15 +123,13 @@ def main():
     q2_r = np.array([atoms.get_distance(1, 2) for atoms in traj_pt])
 
     phi0 = traj_pt[0].get_dihedral(*dihedral_indices)
-#    phi0 = -60
     phi1 = 360.
 
     phi_grid_deg = np.linspace(phi0, phi1, n_images)
     traj_grid = make_distance_dihedral_grid(traj_r=traj_pt,
                                             dihedral_indices=dihedral_indices,
                                             moving_indices=indices,
-                                            phi_grid_deg=phi_grid_deg,
-                                            scaffold=None)
+                                            phi_grid_deg=phi_grid_deg)
     positions = np.array([[atoms.get_positions() for atoms in row] for row in traj_grid])
     q_r = q2_r - q1_r
 #    q_r = q1_r
@@ -143,6 +140,6 @@ def main():
 
     positions = positions * ANG2AU
     q_r = q_r * ANG2AU
-    G = get_G_matrix(q_r, q_phi, positions, masses, plot=True, method="fd")
+    G = get_G_matrix(q_r, q_phi, positions, masses, plot=True, save_op=True, method="fd")
 
     write_xyz_traj("liic_path_pt_rot.xyz", traj_grid.flatten())
