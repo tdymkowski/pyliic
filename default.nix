@@ -1,21 +1,13 @@
-{ pkgs ? import <nixpkgs> {} }:
+{ pkgs ? import <nixpkgs> {}
+, python ? pkgs.python3
+, pyqdng ? null
+}:
 
 let
-  python = pkgs.python3;
-
-  pyqdngSrc = pkgs.fetchgit {
-    url = "https://gitlab.fysik.su.se/markus.kowalewski/pyqdng.git";
-    rev = "cdda7a857a6b72e34939f9c172e9828d4b80e0a8";
-    hash = "sha256-KLPn+Z8VyEgidgK32VVrf68n42IcmRHFnjfSMKKGBYk=";
-  };
-
-  pyqdng = import pyqdngSrc {
-    pkgs = pkgs;
-  };
-
+  py = python.pkgs;
 in
 {
-  pyliic = python.pkgs.buildPythonPackage {
+  pyliic = py.buildPythonPackage {
     pname = "pyliic";
     version = "0.4.0";
 
@@ -23,16 +15,17 @@ in
 
     pyproject = true;
 
-    build-system = with python.pkgs; [
+    build-system = with py; [
       setuptools
       wheel
     ];
 
-    propagatedBuildInputs = with python.pkgs; [
+    propagatedBuildInputs = with py; [
       numpy
       pyyaml
       scipy
       matplotlib
+    ] ++ pkgs.lib.optionals (pyqdng != null) [
       pyqdng
     ];
 
