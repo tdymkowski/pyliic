@@ -16,8 +16,8 @@ authors = [
 
 dependencies = [
     "numpy>=1.23",
-    "scipy>=1.17.0",
-    "matplotlib>=3.10.8",
+    "scipy>=1.16.1",
+    "matplotlib>=3.10.5",
     "pyQDng @ git+https://gitlab.fysik.su.se/markus.kowalewski/pyqdng@cdda7a857a6b72e34939f9c172e9828d4b80e0a8"
 ]
 

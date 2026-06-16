@@ -11,7 +11,7 @@ let
   pyqdngSrc = pkgs.fetchgit {
     url = "https://gitlab.fysik.su.se/markus.kowalewski/pyqdng.git";
     rev = "cdda7a857a6b72e34939f9c172e9828d4b80e0a8";
-    hash = "sha256-YOUR_REAL_HASH_HERE";
+    hash = "sha256-KLPn+Z8VyEgidgK32VVrf68n42IcmRHFnjfSMKKGBYk=";
   };
 
   pyqdng = import pyqdngSrc {};
@@ -42,3 +42,4 @@ in
     doCheck = false;
   };
 }
+

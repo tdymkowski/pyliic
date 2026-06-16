@@ -1,4 +1,4 @@
-from .pyliic import liic, interpolate_dihedral_rotation
+from .pyliic import liic, interpolate_dihedral_rotation, make_distance_dihedral_grid
 from .utils import XYZ, ZMatrix
 from .fileio import write_xyz_traj
 from .eckart import apply_eckart
@@ -10,4 +10,5 @@ __all__ = [
         "liic",
         "write_xyz_traj",
         "apply_eckart",
+        "make_distance_dihedral_grid",
 ]

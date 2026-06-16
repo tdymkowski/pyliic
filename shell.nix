@@ -2,7 +2,7 @@
 
 let
   pkgs = nixpkgs;
-  packages = import ./default.nix { inherit nixpkgs; };
+  packages = import ./default.nix { inherit pkgs; };
 
 in
 pkgs.mkShell {
