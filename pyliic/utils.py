@@ -1,8 +1,16 @@
 #! /usr/bin/env python3
-from typing import DefaultDict
 import numpy as np
 
 from .data import AMU2AU, chemical_symbols, atomic_numbers, atomic_masses_common, atomic_masses_iupac2016
+
+
+def create_XYZ_list(positions, symbols):
+    xyz_list = []
+    for positions_i in positions:
+        xyz = XYZ(symbols=symbols, positions=positions_i)
+        xyz_list.append(xyz)
+    return xyz_list
+
 
 
 def normalize(v, tol=1e-12):
@@ -31,8 +39,8 @@ def place_atom(p0, p1, p2, r, theta_deg, phi_deg):
     return p0 + d_local
 
 
-def compute_distance(p0, p1):
-    return np.linalg.norm(p1 - p0)
+def compute_distance(p0, p1, axis=0):
+    return np.linalg.norm(p1 - p0, axis=axis)
 
 
 def compute_angle( p0, p1, p2):
@@ -462,23 +470,3 @@ class XYZ():
         if len(geometries) == 1:
             return geometries[0]
         return geometries
-
-
-def create_XYZ_list(positions, symbols):
-    xyz_list = []
-    for positions_i in positions:
-        xyz = XYZ(symbols=symbols, positions=positions_i)
-        xyz_list.append(xyz)
-    return xyz_list
-
-
-if __name__ == "__main__":
-    atoms_lst = XYZ.read_xyz("sac_hdisplaced_bounded.xyz")
-    atoms = atoms_lst[0]
-    print(atoms)
-    atoms = atoms.reorder_atoms([9, 11, 8, 0, 1, 2, 3, 4, 5, 6, 7, 10, 12, 13, 14, 15])
-    print(atoms)
-    zmat = atoms.to_zmat()
-    print(zmat)
-    atoms0 = zmat.to_xyz()
-    atoms0.write_xyz("test_sac.xyz")
