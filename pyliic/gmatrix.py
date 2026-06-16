@@ -55,28 +55,41 @@ def get_dxdq(q, positions, method="cubic", axis=0, edge_order=2):
     return dxdq
 
 
-def plot_G_matrix(qr, q_phi, G, invG=None):
+def plot_G_matrix(q1, q2, G, invG=None, **kwargs):
     components = [
         (0, 0, r"$G_{rr}$"),
-        (0, 1, r"$G_{r\phi}$"),
-        (1, 0, r"$G_{\phi r}$"),
-        (1, 1, r"$G_{\phi\phi}$"),
+        (0, 1, r"$G_{rs}$"),
+        (1, 0, r"$G_{sr}$"),
+        (1, 1, r"$G_{ss}$"),
     ]
 
-    R, P = np.meshgrid(qr, q_phi, indexing="ij")
-# TODO save plots!!!
-    for a, b, title in components:
-        plt.figure()
-        plt.contourf(R, P, G[:, :, a, b], levels=30)
-        plt.xlabel(r"$r_{O2H} - r_{O1H}$ (au)")
-#        plt.xlabel(r"$r_{O2H}$ (au)")
-#        plt.xlabel(r"$r_{O1`H}$ (au)")
-        plt.ylabel(r"$\phi$ (rad)")
-        plt.colorbar(label=title)
-        plt.title(title)
-        plt.tight_layout()
-#        plt.savefig("gmat_r2.pdf")
-        plt.show()
+    R, P = np.meshgrid(q1, q2, indexing="ij")
+
+    q1_label = kwargs.get("q1_label", r"$r_{O2H} - r_{O1H}$ (au)")
+    q2_label = kwargs.get("q2_label", r"$\phi$ (rad)")
+    levels = kwargs.get("levels", 30)
+    cmap = kwargs.get("cmap", None)
+    save = kwargs.get("save", False)
+    filename = kwargs.get("filename", "gmat.pdf")
+
+    fig, axes = plt.subplots(2, 2, figsize=kwargs.get("figsize", (10, 8)))
+
+    for ax, (a, b, title) in zip(axes.flatten(), components):
+        contour = ax.contourf(R, P, G[:, :, a, b], levels=levels, cmap=cmap)
+
+        ax.set_xlabel(q1_label)
+        ax.set_ylabel(q2_label)
+        ax.set_title(title)
+
+        fig.colorbar(contour, ax=ax, label=title)
+
+    fig.tight_layout()
+
+    if save:
+        fig.savefig(filename, bbox_inches="tight")
+
+    plt.show()
+
 
     if invG is not None:
         components = [

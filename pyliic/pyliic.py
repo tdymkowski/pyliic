@@ -4,7 +4,8 @@ import sys
 from .utils import XYZ, ZMatrix
 from .fileio import write_xyz_traj
 from .gmatrix import *
-from .data import AMU2AU, ANG2AU
+from .data import ANG2AU
+from .eckart import apply_eckart
 
 
 def interpolate_angle(a0, a1, t):
@@ -53,6 +54,7 @@ def liic(atoms0, atoms1, n_images=101, order=None):
         zmats.append(zmat_t)
         xyz = zmat_t.to_xyz()
         traj.append(xyz)
+    traj = apply_eckart(traj)
     return traj
 
 
@@ -151,7 +153,7 @@ def make_distance_dihedral_grid(traj_r, dihedral_indices, moving_indices, phi_gr
             atoms = base_geom.copy()
             atoms.set_dihedral(*dihedral_indices, phi, indices=moving_indices)
             row.append(atoms)
-
+        row = apply_eckart(row)
         grid.append(row)
 
     return np.array(grid)
