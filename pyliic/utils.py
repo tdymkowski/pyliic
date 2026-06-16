@@ -319,7 +319,7 @@ class XYZ():
         return masses
 
     def get_distance(self, a0, a1):
-        return compute_distance(self.positions[a0], self.positions[a1])
+        return compute_distance(self.positions[a0], self.positions[a1], axis=0)
 
     def get_angle(self, a0, a1, a2):
         return compute_angle(self.positions[a0], self.positions[a1], self.positions[a2])

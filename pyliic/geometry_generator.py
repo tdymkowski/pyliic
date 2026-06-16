@@ -1,11 +1,9 @@
 #! /usr/bin/env python3
-
 import numpy as np
 from scipy.interpolate import CubicSpline, PchipInterpolator
 
 from .interpolation import liic
 from .utils import XYZ, compute_distance
-from .eckart import apply_eckart
 
 
 def get_rdiff(atoms, proton_idx, atom1_idx, atom2_idx):
@@ -21,7 +19,7 @@ def get_rdiff(atoms, proton_idx, atom1_idx, atom2_idx):
     return r2 - r1
 
 
-class LIICGeometryGenerator:
+class GeometryGenerator:
     def __init__(
         self,
         react: XYZ,
@@ -29,15 +27,16 @@ class LIICGeometryGenerator:
         proton_idx: int,
         atom1_idx: int,
         atom2_idx: int | None = None,
-        q1: str = "r1",
+        q1: str | None = "r1",
         q2: str | None = None,
         dihedral_indices=None,
         moving_indices=None,
+        phi_min=None,
+        phi_max=None,
         n_images: int = 100,
         order=None,
         int_method: str = "pchip",
-        duplicate_tol: float = 1e-12,
-    ):
+        duplicate_tol: float = 1e-12):
         self.q1 = q1
         self.q2 = q2
 
@@ -50,40 +49,82 @@ class LIICGeometryGenerator:
 
         self.dihedral_indices = dihedral_indices
         self.moving_indices = moving_indices
+        self.phi_min = phi_min
+        self.phi_max = phi_max
 
         self.symbols = react.get_symbols()
 
-        traj = liic(
-            react,
-            prod,
-            n_images=n_images,
-            order=order)
-
-        self.traj = traj
-        self.positions = np.array(
-            [g.get_positions() for g in traj],
-            dtype=float)
-
-        self.q = self._compute_q()
-
-        sort_idx = np.argsort(self.q)
-        self.q = self.q[sort_idx]
-        self.positions = self.positions[sort_idx]
-
-        dq = np.diff(self.q)
-
-        if np.any(np.abs(dq) < duplicate_tol):
-            raise ValueError(
-                f"Duplicate or nearly duplicate q values found for q1='{q1}'. "
-                f"Minimum |dq| = {np.min(np.abs(dq)):.6e}. "
-                "The mapping q -> geometry is not unique."
+        if self.q1 is not None:
+            self.mode = "q1"
+        
+            traj = liic(
+                react,
+                prod,
+                n_images=n_images,
+                order=order,
             )
-
-        if not np.all(dq > 0):
-            raise ValueError(
-                "q values are not strictly increasing after sorting. "
-                "This should not happen unless there are NaNs or duplicate values."
+        
+            self.traj = traj
+            self.positions = np.array(
+                [g.get_positions() for g in traj],
+                dtype=float,
             )
+        
+            self.q = self._compute_q()
+        
+            sort_idx = np.argsort(self.q)
+            self.q = self.q[sort_idx]
+            self.positions = self.positions[sort_idx]
+        
+            dq = np.diff(self.q)
+        
+            if np.any(np.abs(dq) < duplicate_tol):
+                raise ValueError(
+                    f"Duplicate or nearly duplicate q values found for q1='{q1}'. "
+                    f"Minimum |dq| = {np.min(np.abs(dq)):.6e}. "
+                    "The mapping q -> geometry is not unique."
+                )
+        
+            if not np.all(dq > 0):
+                raise ValueError(
+                    "q values are not strictly increasing after sorting. "
+                    "This should not happen unless there are NaNs or duplicate values."
+                )
+        
+        elif self.q2 is not None:
+            self.mode = "q2"
+        
+            if self.q2 != "dihedral":
+                raise ValueError(f"Unknown q2='{self.q2}'. Expected 'dihedral'.")
+        
+            if self.phi_min is None or self.phi_max is None:
+                raise ValueError("phi_min and phi_max cannot be None.")
+        
+            if self.dihedral_indices is None or self.moving_indices is None:
+                raise ValueError(
+                    "dihedral_indices and moving_indices are required for dihedral-only mode."
+                )
+        
+            self.q = np.linspace(float(self.phi_min), float(self.phi_max), n_images)
+        
+            self.traj = []
+            for phi in self.q:
+                a = prod.copy()
+                a.set_dihedral(
+                    *self.dihedral_indices,
+                    float(phi),
+                    indices=self.moving_indices,
+                )
+                print(a.get_dihedral(*self.dihedral_indices))
+                self.traj.append(a)
+        
+            self.positions = np.array(
+                [g.get_positions() for g in self.traj],
+                dtype=float,
+            )
+        
+        else:
+            raise NotImplementedError("Either q1 or q2 must be specified.") 
 
         int_method = int_method.lower()
 
@@ -128,7 +169,8 @@ class LIICGeometryGenerator:
 
             q = np.array([
                 get_rdiff(g, self.proton_idx, self.atom1_idx, self.atom2_idx) for g in self.traj])
-
+        elif self.q1 == "s":
+            q = np.linspace(0.0, 1.0, len(self.positions))
         else:
             raise ValueError(f"Unknown q1='{self.q1}'. Expected 'r1', 'r2', or 'dr'.")
 
@@ -137,20 +179,18 @@ class LIICGeometryGenerator:
 
         return q
 
-    def __call__(self, q, phi=None, enforce=False, tol=1e-10):
+    def __call__(self, q, phi=None, tol=1e-10):
         q_requested = float(q)
     
-        qmin = self.q1min
-        qmax = self.q1max
+        qmin = self.qmin
+        qmax = self.qmax
     
-        # allow tiny floating-point overshoot at the boundaries
         if q_requested < qmin - tol or q_requested > qmax + tol:
             raise ValueError(
                 f"Requested q={q_requested:.12f} outside interpolation range "
                 f"[{qmin:.12f}, {qmax:.12f}]"
             )
     
-        # clamp if very close to boundary
         q_eval = np.clip(q_requested, qmin, qmax)
     
         pos = self.interpolator(q_eval)
@@ -160,46 +200,40 @@ class LIICGeometryGenerator:
             positions=np.asarray(pos, dtype=float),
         )
     
-        if phi is not None:
+        if self.mode == "q1" and phi is not None:
             if self.dihedral_indices is None or self.moving_indices is None:
-                raise ValueError("dihedral_indices and moving_indices are required when calling the generator with phi")
+                raise ValueError(
+                    "dihedral_indices and moving_indices are required "
+                    "when calling the generator with phi."
+                )
+    
             geom.set_dihedral(
                 *self.dihedral_indices,
                 float(phi),
                 indices=self.moving_indices,
             )
     
-#        if enforce:
-#            if self.q1 == "dr":
-#                geom = enforce_rdiff_keep_perp(
-#                    geom,
-#                    q=q_requested,
-#                    proton_idx=self.proton_idx,
-#                    atom1_idx=self.atom1_idx,
-#                    atom2_idx=self.atom2_idx,
-#                )
-#    
-#            elif self.q1 == "r1":
-#                geom = enforce_distance_to_atom(
-#                    geom,
-#                    r=q_requested,
-#                    proton_idx=self.proton_idx,
-#                    atom_idx=self.atom1_idx,
-#                )
-#    
-#            elif self.q1 == "r2":
-#                geom = enforce_distance_to_atom(
-#                    geom,
-#                    r=q_requested,
-#                    proton_idx=self.proton_idx,
-#                    atom_idx=self.atom2_idx,
-#                )
+        # In q2-only mode, phi argument should not be used
+        if self.mode == "q2" and phi is not None:
+            raise ValueError(
+                "This generator is already in dihedral-only mode. "
+                "Call it as gen(phi), not gen(q, phi=...)."
+            )
+    
         return geom
     
     @property
-    def q1min(self):
+    def qmin(self):
         return float(np.min(self.q))
-
+    
+    @property
+    def qmax(self):
+        return float(np.max(self.q))
+    
+    @property
+    def q1min(self):
+        return self.qmin
+    
     @property
     def q1max(self):
-        return float(np.max(self.q))
+        return self.qmax

@@ -56,6 +56,20 @@ def get_dxdq(q, positions, method="cubic", axis=0, edge_order=2):
     return dxdq
 
 
+def get_G_element(q, positions, masses, method="fd", axis=0, edge_order=2, plot=False, save=False):
+    dxdq = get_dxdq(q, positions, method=method, axis=axis, edge_order=edge_order)
+    invG = calc_inv_G_value(dxdq, masses)
+    G = 1.0 / invG
+    if plot:
+        plt.plot(q, G)
+        plt.xlabel("q")
+        plt.ylabel("G")
+        if save:
+            plt.savefig("gelement.pdf")
+        plt.show()
+    return G
+
+
 def plot_G_matrix(q1, q2, G, invG=None, **kwargs):
     components = [
         (0, 0, r"$G_{rr}$"),
