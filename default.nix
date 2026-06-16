@@ -5,7 +5,7 @@ let
   pyqdngSrc = pkgs.fetchFromGitLab {
     owner = "markus.kowalewski";
     repo = "pyqdng";
-#    url = "gitlab.fysik.su.se/markus.kowalewski/pyqdng.git";
+    url = "gitlab.fysik.su.se/markus.kowalewski/pyqdng.git";
     rev = "cdda7a857a6b72e34939f9c172e9828d4b80e0a8";
     hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
   };
