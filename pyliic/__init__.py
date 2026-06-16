@@ -3,7 +3,7 @@ from .utils import XYZ, ZMatrix
 from .geometry_generator import GeometryGenerator
 from .fileio import write_xyz_traj
 from .eckart import apply_eckart
-from .gmatrix import get_G_matrix, get_G_element
+from .gmatrix import get_G_matrix, get_G_element, reshape_positions_for_gmat
 
 __all__ = [
         "XYZ",
@@ -16,6 +16,7 @@ __all__ = [
         "GeometryGenerator",
         "get_G_matrix",
         "get_G_element",
+        "reshape_positions_for_gmat"
 ]
 
 __version__ = "0.3.0"

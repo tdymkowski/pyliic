@@ -4,7 +4,7 @@ import sys
 
 from pyliic.eckart import apply_eckart
 from .fileio import write_xyz_traj
-from .gmatrix import *
+from .gmatrix import get_G_element, get_G_matrix, reshape_positions_for_gmat
 from .data import AMU2AU, ANG2AU
 from .interpolation import liic, make_distance_dihedral_grid
 from .utils import XYZ
@@ -32,20 +32,33 @@ def main():
     phi0 = traj_pt[0].get_dihedral(*dihedral_indices)
     phi1 = 360.
 
-#    make_geom = GeometryGenerator(react, prod, proton_idx=11, atom1_idx=9, atom2_idx=8, dihedral_indices=[1, 0, 6, 8], moving_indices=[8, 7, 10, 11], q1="dr")
-#
-#    r1_fine = np.linspace(np.min(q1_r), np.max(q1_r), 200)
-#    r2_fine = np.linspace(np.max(q2_r), np.min(q2_r), 200)
-#    q1_fine = r2_fine - r1_fine
-#
-#    q2_fine = np.linspace(0., 360., 200)
-#    geoms = []
-#    for q1_f in q1_fine:
-#        for q2_f in q2_fine:
-#            geom_q1 = make_geom(q1_f, phi=q2_f)
-#            geoms.append(geom_q1)
-#    geoms = apply_eckart(geoms)
-#    write_xyz_traj("traj_liic.xyz", geoms)
+    make_geom = GeometryGenerator(react, prod, proton_idx=11, atom1_idx=9, atom2_idx=8, dihedral_indices=[1, 0, 6, 8], moving_indices=[8, 7, 10, 11], q1="s")
+
+    r1_fine = np.linspace(np.min(q1_r), np.max(q1_r), 200)
+    r2_fine = np.linspace(np.max(q2_r), np.min(q2_r), 200)
+
+    q1_fine = np.linspace(0, 1, 200)
+    q2_fine = np.linspace(0., 360., 200)
+    geoms = []
+    for q1_f in q1_fine:
+        for q2_f in q2_fine:
+            geom_q1 = make_geom(q1_f, phi=q2_f)
+            geoms.append(geom_q1)
+    geoms = apply_eckart(geoms)
+    write_xyz_traj("traj_liic.xyz", geoms)
+
+    q1_label = r"$s$"
+    positions = np.array([g.get_positions() for g in geoms]) * ANG2AU
+    positions = reshape_positions_for_gmat(q1_fine, q2_fine, positions)
+    n_q1 = len(q1_fine)
+    n_q2 = len(q2_fine)
+    n_atoms = positions.shape[1]
+#    positions = positions.reshape(n_q1, n_q2, n_atoms, 3)
+#    q1_fine *= ANG2AU
+    q2_fine_rad = np.deg2rad(q2_fine)
+    G = get_G_matrix(q1_fine, q2_fine_rad, positions, masses, plot=True, save_op=False, method="fd", q1_label=q1_label)
+
+
 
     gen_phi = GeometryGenerator(
         react=react,
@@ -79,7 +92,7 @@ def main():
         proton_idx=11,
         atom1_idx=9,
         atom2_idx=8,
-        q1="dr",
+        q1="s",
         q2=None,
 #        dihedral_indices=[1, 0, 6, 8],
 #        moving_indices=[8, 7, 10, 11],
@@ -95,16 +108,17 @@ def main():
     r2_fine = np.linspace(np.max(q2_r), np.min(q2_r), 400)
     q1_fine = r2_fine - r1_fine
     geoms = []
+    q1_fine = np.linspace(0, 1, 400)
     for q1_f in q1_fine:
+
         geom_q1 = gen_licc(q1_f)
         geoms.append(geom_q1)
  
     geoms = apply_eckart(geoms)
     positions = np.array([g.get_positions() for g in geoms]) * AMU2AU
-    G = get_G_element(q1_fine, positions, masses, plot=True)
+#    G = get_G_element(q1_fine, positions, masses, plot=True)
     write_xyz_traj("traj_liic_r1.xyz", geoms)
 
- 
 
 #    q1_label = r"$r{O1H}$"
 #    positions = np.array([g.get_positions() for g in geoms]) * ANG2AU

@@ -5,6 +5,15 @@ from scipy.interpolate import CubicSpline, PchipInterpolator
 import matplotlib.pyplot as plt
 
 
+def reshape_positions_for_gmat(q1, q2, positions):
+    positions0 = positions.copy()
+    n_q1 = len(q1)
+    n_q2 = len(q2)
+    n_atoms = positions.shape[1]
+    positions0 = positions0.reshape(n_q1, n_q2, n_atoms, 3)
+    return positions0
+
+
 def get_dxdq_fd(q, positions, edge_order=2, axis=0):
     order = np.argsort(q)
     q = q[order]
@@ -125,6 +134,7 @@ def plot_G_matrix(q1, q2, G, invG=None, **kwargs):
 
 
 def get_G_matrix(q1, q2, positions, masses, edge_order=2, method="cubic", plot=False, save_op=False, **kwargs):
+    print(positions.ndim)
     n_q1, n_q2, n_atoms, ndim = positions.shape
 
     dx_dq1 = get_dxdq(q1, positions, method=method, axis=0)
