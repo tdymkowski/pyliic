@@ -64,7 +64,6 @@ def plot_G_matrix(q1, q2, G, invG=None, **kwargs):
     ]
 
     R, P = np.meshgrid(q1, q2, indexing="ij")
-
     q1_label = kwargs.get("q1_label", r"$r_{O2H} - r_{O1H}$ (au)")
     q2_label = kwargs.get("q2_label", r"$\phi$ (rad)")
     levels = kwargs.get("levels", 30)
@@ -110,7 +109,7 @@ def plot_G_matrix(q1, q2, G, invG=None, **kwargs):
             plt.show()
 
 
-def get_G_matrix(qr, q_phi, positions, masses, edge_order=2, method="cubic", plot=False):
+def get_G_matrix(qr, q_phi, positions, masses, edge_order=2, method="cubic", plot=False, **kwargs):
     n_r, n_phi, n_atoms, ndim = positions.shape
 
     dx_dr = get_dxdq(qr, positions, method=method, axis=0)
@@ -124,6 +123,6 @@ def get_G_matrix(qr, q_phi, positions, masses, edge_order=2, method="cubic", plo
     G = np.linalg.inv(invG)
 
     if plot:
-        plot_G_matrix(qr, q_phi, G)
+        plot_G_matrix(qr, q_phi, G, **kwargs)
 
     return G

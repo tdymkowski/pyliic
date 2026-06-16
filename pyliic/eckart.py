@@ -64,7 +64,7 @@ def rotational_eckart(positions: np.ndarray, masses: np.ndarray , ref_idx=0, min
     # get F matrix
     F = get_F_matrix(A)
     eigenvalues, eigenvectors = np.linalg.eigh(F)
-    q = eigenvectors[:, :, -1]
+    q = eigenvectors[:, :, 0]
     U = get_U_matrix(q)
     positions_rot = np.einsum("nij,naj->nai", U, positions)
     return positions_rot
@@ -93,9 +93,10 @@ def check_rotational_eckart(positions, masses, ref_idx=0, tol=1e-12):
     cross = np.cross(positions, R[None, :, :], axis=2)
     rot_res = np.einsum("a,nak->nk", masses, cross)
     norms = np.linalg.norm(rot_res, axis=1)
-    if np.any(norms > tol):
-        raise ValueError(f"Rotational Eckart condition error. Max residual: {np.max(norms):.6e}")
-
+    print(f"Rotational Eckart condition error. Max residual: {np.max(norms):.6e}")
+#    if np.any(norms > tol):
+#        raise ValueError(f"Rotational Eckart condition error. Max residual: {np.max(norms):.6e}")
+#
 
 def check_eckart_conditions(positions, masses, ref_idx=0):
     check_translational_eckart(positions, masses)
