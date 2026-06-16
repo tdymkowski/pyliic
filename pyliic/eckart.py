@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 import numpy as np
-from .utils import XYZ
+from .utils import XYZ, create_XYZ_list
+from .fileio import write_xyz_traj
 
 
 def get_U_matrix(q):
@@ -51,72 +52,88 @@ def get_F_matrix(A: np.ndarray):
     return F
 
 
-def get_A_matrix(positions, masses, ref_idx=0):
-    R = positions[ref_idx]
-    
-    A = np.einsum("a,nai,aj->nij", masses, positions, R)
+def get_A_matrix(positions, masses, ref_idx=0, scaffold=None):
+    if scaffold is not None:
+        scaffold = np.asarray(scaffold, dtype=int)
+        P = positions[:, scaffold, :]
+        R = positions[ref_idx, scaffold, :]
+        m = masses[scaffold]
+    else:
+        P = positions
+        R = positions[ref_idx]
+        m = masses
+    A = np.einsum("a,nai,aj->nij", m, P, R)
     return A
 
 
-def rotational_eckart(positions: np.ndarray, masses: np.ndarray , ref_idx=0, min_eigen=False):
+def rotational_eckart(positions: np.ndarray, masses: np.ndarray , ref_idx=0, min_eigen=False, scaffold=None):
     # get coorelation matrix
-    A = get_A_matrix(positions, masses, ref_idx=ref_idx)
+    A = get_A_matrix(positions, masses, ref_idx=ref_idx, scaffold=scaffold)
     # get F matrix
     F = get_F_matrix(A)
     eigenvalues, eigenvectors = np.linalg.eigh(F)
-    q = eigenvectors[:, :, 0]
+    q_idx = 0 if min_eigen else -1
+    q = eigenvectors[:, :, q_idx]
+    q /= np.linalg.norm(q, axis=1)[:, None]
     U = get_U_matrix(q)
-    positions_rot = np.einsum("nij,naj->nai", U, positions)
+    
+#    positions_rot = np.einsum("nij,naj->nai", U, positions)
+    positions_rot = np.einsum("nji,naj->nai", U, positions)
     return positions_rot
 
 
 def translational_eckart(positions: np.ndarray, masses: np.ndarray):
-    com_shifted_positions = []
-
-    for positions_i in positions:
-        com = np.average(positions_i, weights=masses, axis=0)
-        positions_i -= com
-        com_shifted_positions.append(positions_i)
-
-    return np.array(com_shifted_positions)
+    com = np.average(positions, weights=masses, axis=1)    
+    return positions - com[:, None, :]
 
 
 def check_translational_eckart(positions, masses, tol=1e-12):
     trans_res = np.einsum("a,nak->nk", masses, positions)
     norms = np.linalg.norm(trans_res, axis=1)
+    print(f"Max translational residual: {np.max(norms): .6e}")
     if np.any(norms > tol):
         raise ValueError(f"Translational Eckart condition error. Max residual: {np.max(norms):.6e}")
 
 
-def check_rotational_eckart(positions, masses, ref_idx=0, tol=1e-12):
-    R = positions[ref_idx]
-    cross = np.cross(positions, R[None, :, :], axis=2)
-    rot_res = np.einsum("a,nak->nk", masses, cross)
+def check_rotational_eckart(positions, masses, ref_idx=0, tol=1e-12, scaffold=None):
+    if scaffold is not None:
+        print(f"Scaffold indices: {scaffold}")
+        scaffold = np.asarray(scaffold, dtype=int)
+        P = positions[:, scaffold, :]
+        R = positions[ref_idx, scaffold, :]
+        m = masses[scaffold]
+    else:
+        P = positions
+        R = positions[ref_idx]
+        m = masses
+    cross = np.cross(P, R[None, :, :], axis=2)
+    rot_res = np.einsum("a,nak->nk", m, cross)
     norms = np.linalg.norm(rot_res, axis=1)
-    print(f"Rotational Eckart condition error. Max residual: {np.max(norms):.6e}")
-#    if np.any(norms > tol):
-#        raise ValueError(f"Rotational Eckart condition error. Max residual: {np.max(norms):.6e}")
+    print(f"Max rotational residual: {np.max(norms):.6e}")
+    if np.any(norms > tol):
+        raise ValueError(f"Rotational Eckart condition error. Max residual: {np.max(norms):.6e}")
 #
 
-def check_eckart_conditions(positions, masses, ref_idx=0):
+def check_eckart_conditions(positions, masses, ref_idx=0, scaffold=None):
     check_translational_eckart(positions, masses)
-    check_rotational_eckart(positions, masses, ref_idx=ref_idx)
+    check_rotational_eckart(positions, masses, ref_idx=ref_idx, scaffold=scaffold)
 
-def apply_eckart(traj: list[XYZ], ref_idx=0):
+
+def apply_eckart(traj: list[XYZ], ref_idx=0, scaffold=None):
+    # get symbols
+    symbols = traj[ref_idx].get_symbols()
     # get all positions
     positions = np.array([t.get_positions() for t in traj])
     # get masses
     masses = traj[ref_idx].get_masses_amu()
+
     # apply translational eckart condition
     positions = translational_eckart(positions, masses)
     # apply rotational eckart condition
-    positions = rotational_eckart(positions, masses, ref_idx=ref_idx)
-    check_eckart_conditions(positions, masses, ref_idx=ref_idx)
-    # convert to list[XYZ]
-    traj1 = []
-    for t, pos in zip(traj, positions):
-        t_new = t.copy()
-        t_new.set_positions(pos)
-        traj1.append(t_new)
+    positions = rotational_eckart(positions, masses, ref_idx=ref_idx, scaffold=scaffold)
+    # do checks
+    check_eckart_conditions(positions, masses, ref_idx=ref_idx, scaffold=scaffold)
 
+    # convert to list[XYZ]
+    traj1 = create_XYZ_list(positions, symbols)
     return traj1

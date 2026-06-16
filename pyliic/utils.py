@@ -296,6 +296,10 @@ class XYZ():
     def set_positions(self, new_positions):
         self.positions = new_positions
 
+    def get_symbols(self):
+        symbols = self.symbols.copy()
+        return symbols
+
     def get_masses_amu(self):
         numbers = np.array([atomic_numbers.get(symbol) for symbol in self.symbols])
         masses = atomic_masses_common[numbers]
@@ -458,6 +462,14 @@ class XYZ():
         if len(geometries) == 1:
             return geometries[0]
         return geometries
+
+
+def create_XYZ_list(positions, symbols):
+    xyz_list = []
+    for positions_i in positions:
+        xyz = XYZ(symbols=symbols, positions=positions_i)
+        xyz_list.append(xyz)
+    return xyz_list
 
 
 if __name__ == "__main__":

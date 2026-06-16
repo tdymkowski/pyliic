@@ -54,7 +54,8 @@ def liic(atoms0, atoms1, n_images=101, order=None):
         zmats.append(zmat_t)
         xyz = zmat_t.to_xyz()
         traj.append(xyz)
-    traj = apply_eckart(traj)
+
+    traj = apply_eckart(traj, ref_idx=len(traj) // 2)
     return traj
 
 
@@ -75,7 +76,7 @@ def interpolate_dihedral_rotation(atoms, dihedral_indices, final_angle, moving_i
     return traj
 
 
-def make_distance_dihedral_grid(traj_r, dihedral_indices, moving_indices, phi_grid_deg):
+def make_distance_dihedral_grid(traj_r, dihedral_indices, moving_indices, phi_grid_deg, scaffold=None):
 
     grid = []
 
@@ -90,10 +91,12 @@ def make_distance_dihedral_grid(traj_r, dihedral_indices, moving_indices, phi_gr
     n_r = len(traj_r)
     n_phi = len(phi_grid_deg)
     flat_grid = [geom for row in grid for geom in row]
-    flat_grid = apply_eckart(flat_grid)
+    flat_grid = apply_eckart(flat_grid,
+                             ref_idx=len(flat_grid) // 2,
+                             scaffold=scaffold)
     grid = np.array(flat_grid).reshape(n_r, n_phi)
 
-    return np.array(grid)
+    return np.array(grid, dtype=object)
 
 
 def remap_indices_after_reorder(indices, order):
@@ -102,13 +105,13 @@ def remap_indices_after_reorder(indices, order):
 
 
 def main():
-    n_images = 101
+    n_images = 100
     xyzpath = "/home/tdymkowski/Documents/projects/liic/s1_geometries.xyz"
     xyz_lst = XYZ.read_xyz(xyzpath)
 
     indices = [2, 1, 10, 11]
     dihedral_indices = [4, 3, 9, 2]
-    ring_indices = []
+    ring_indices = [3, 4, 5, 6, 7, 8]
 
     react = xyz_lst[0]
     masses = react.get_masses_au()
@@ -119,7 +122,6 @@ def main():
     
     q1_r = np.array([atoms.get_distance(0, 1) for atoms in traj_pt])
     q2_r = np.array([atoms.get_distance(1, 2) for atoms in traj_pt])
-    print(q2_r)
 
     phi0 = traj_pt[0].get_dihedral(*dihedral_indices)
 #    phi0 = -60
@@ -129,17 +131,18 @@ def main():
     traj_grid = make_distance_dihedral_grid(traj_r=traj_pt,
                                             dihedral_indices=dihedral_indices,
                                             moving_indices=indices,
-                                            phi_grid_deg=phi_grid_deg)
+                                            phi_grid_deg=phi_grid_deg,
+                                            scaffold=None)
     positions = np.array([[atoms.get_positions() for atoms in row] for row in traj_grid])
-#    q_r = q2_r - q1_r
+    q_r = q2_r - q1_r
 #    q_r = q1_r
 #    q1_label = r"$r{O1H}$"
-    q_r = q2_r
-    q1_label = r"$r{O2H}$"
+#    q_r = q2_r
+#    q1_label = r"$r{O2H}$"
     q_phi = np.unwrap(np.deg2rad(phi_grid_deg))
 
     positions = positions * ANG2AU
     q_r = q_r * ANG2AU
-    G = get_G_matrix(q_r, q_phi, positions, masses, plot=True, method="fd", q1_label=q1_label)
+    G = get_G_matrix(q_r, q_phi, positions, masses, plot=True, method="fd")
 
     write_xyz_traj("liic_path_pt_rot.xyz", traj_grid.flatten())
