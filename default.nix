@@ -1,11 +1,6 @@
 { pkgs ? import <nixpkgs> {} }:
 
 let
-  nixpkgs = builtins.fetchTarball {
-    url = "https://github.com/NixOS/nixpkgs/archive/ca77296380960cd497a765102eeb1356eb80fed0.tar.gz";
-  };
-
-  pkgs = import nixpkgs {};
   python = pkgs.python3;
 
   pyqdngSrc = pkgs.fetchgit {
@@ -14,7 +9,9 @@ let
     hash = "sha256-KLPn+Z8VyEgidgK32VVrf68n42IcmRHFnjfSMKKGBYk=";
   };
 
-  pyqdng = import pyqdngSrc {};
+  pyqdng = import pyqdngSrc {
+    pkgs = pkgs;
+  };
 
 in
 {
@@ -42,4 +39,3 @@ in
     doCheck = false;
   };
 }
-
