@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "pyliic"
+version = "0.1.0"
+description = "Perform linear interpolation in internal coordinates."
+requires-python = ">=3.9"
+license = { text = "MIT" }
+
+authors = [
+    { name = "Tomasz Dymkowski" }
+]
+
+dependencies = [
+    "numpy>=1.23",
+    "scipy>=1.17.0",
+    "matplotlib>=3.10.8"
+]
+
+
+[project.scripts]
+pyliic = "pyliic.pyliic:main"
+
+
+[tool.setuptools]
+packages = ["pyliic"]
