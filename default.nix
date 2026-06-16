@@ -1,20 +1,24 @@
-{ nixpkgs ? import <nixpkgs> {} }:
+{ }:
 
 let
-  pkgs = nixpkgs;
+  nixpkgs = builtins.fetchTarball {
+    url = "https://github.com/NixOS/nixpkgs/archive/ca77296380960cd497a765102eeb1356eb80fed0.tar.gz";
+  };
+
+  pkgs = import nixpkgs {};
+  python = pkgs.python3;
+
   pyqdngSrc = pkgs.fetchgit {
-#    owner = "markus.kowalewski";
-#    repo = "pyqdng";
     url = "https://gitlab.fysik.su.se/markus.kowalewski/pyqdng.git";
     rev = "cdda7a857a6b72e34939f9c172e9828d4b80e0a8";
-    hash = "sha256-KLPn+Z8VyEgidgK32VVrf68n42IcmRHFnjfSMKKGBYk=";
+    hash = "sha256-YOUR_REAL_HASH_HERE";
   };
-  pyqdng = import pyqdngSrc {
-    pkgs = pkgs;
-  };
+
+  pyqdng = import pyqdngSrc {};
+
 in
 {
-  pyliic = pkgs.python3.pkgs.buildPythonPackage {
+  pyliic = python.pkgs.buildPythonPackage {
     pname = "pyliic";
     version = "0.2.0";
 
@@ -22,12 +26,12 @@ in
 
     pyproject = true;
 
-    build-system = with pkgs.python3.pkgs; [
+    build-system = with python.pkgs; [
       setuptools
       wheel
     ];
 
-    dependencies = with pkgs.python3.pkgs; [
+    propagatedBuildInputs = with python.pkgs; [
       numpy
       pyyaml
       scipy
