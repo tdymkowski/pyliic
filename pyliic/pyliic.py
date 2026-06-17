@@ -27,7 +27,7 @@ def read_pyphspu_input():
     return xyzpath, outpath, idx, x
 
 
-def create_geometries_ro1h():
+def create_geometries_ro1h(n_images=200):
     xyzpath, outpath, _, RO1H = read_pyphspu_input()
     xyz_lst = XYZ.read_xyz(xyzpath)
     react = xyz_lst[0]
@@ -40,7 +40,7 @@ def create_geometries_ro1h():
         atom2_idx=8,
         q1="r1",
         q2=None,
-        n_images=N_IMAGES,
+        n_images=n_images,
         int_method="pchip")
     data = []
     geoms = []
@@ -56,7 +56,7 @@ def create_geometries_ro1h():
     return data
 
 
-def create_geometries_ro2h():
+def create_geometries_ro2h(n_images=200):
     xyzpath, outpath, _, RO2H = read_pyphspu_input()
     xyz_lst = XYZ.read_xyz(xyzpath)
     react = xyz_lst[0]
@@ -69,7 +69,7 @@ def create_geometries_ro2h():
         atom2_idx=8,
         q1="r2",
         q2=None,
-        n_images=N_IMAGES,
+        n_images=n_images,
         int_method="pchip")
     data = []
     geoms = []
@@ -87,7 +87,7 @@ def create_geometries_ro2h():
     return data
 
 
-def create_geometries_dr():
+def create_geometries_dr(n_images=200):
     # r2 - r1
     xyzpath, outpath, _, DR = read_pyphspu_input()
     xyz_lst = XYZ.read_xyz(xyzpath)
@@ -101,7 +101,7 @@ def create_geometries_dr():
         atom2_idx=8,
         q1="dr",
         q2=None,
-        n_images=N_IMAGES,
+        n_images=n_images,
         int_method="pchip")
     data = []
     geoms = []
@@ -119,7 +119,7 @@ def create_geometries_dr():
     return data
 
 
-def create_geometries_phi():
+def create_geometries_phi(n_images=200):
     # dihedral
     xyzpath, outpath, _, PHI = read_pyphspu_input()
     xyz_lst = XYZ.read_xyz(xyzpath)
@@ -136,7 +136,7 @@ def create_geometries_phi():
         moving_indices=[8, 7, 10, 11],
         phi_min=0.0,
         phi_max=360.0,
-        n_images=200,
+        n_images=n_images,
         int_method="pchip")
     data = []
     geoms = []
@@ -154,12 +154,20 @@ def create_geometries_phi():
     return data
 
 
-def create_geometries_2D(q1="r1"):
+def create_geometries_2D(q1="r1", n_images=200):
     xyzpath, outpath, _, X = read_pyphspu_input()
     xyz_lst = XYZ.read_xyz(xyzpath)
     react = xyz_lst[0]
     prod = xyz_lst[1]
-    make_geom = GeometryGenerator(react, prod, proton_idx=11, atom1_idx=9, atom2_idx=8, dihedral_indices=[1, 0, 6, 8], moving_indices=[8, 7, 10, 11], q1=q1)
+    make_geom = GeometryGenerator(react,
+                                  prod,
+                                  proton_idx=11,
+                                  atom1_idx=9,
+                                  atom2_idx=8,
+                                  dihedral_indices=[1, 0, 6, 8],
+                                  moving_indices=[8, 7, 10, 11],
+                                  q1=q1,
+                                  n_images=n_images)
     data = []
     geoms = []
     for r, phi in X:
