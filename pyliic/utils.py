@@ -1,8 +1,11 @@
 #! /usr/bin/env python3
 import numpy as np
-
+import importlib.util
 from .data import AMU2AU, chemical_symbols, atomic_numbers, atomic_masses_common, atomic_masses_iupac2016
 
+package_name = 'ase'
+
+IS_ASE = importlib.util.find_spec(package_name)
 
 def create_XYZ_list(positions, symbols):
     xyz_list = []
@@ -11,6 +14,34 @@ def create_XYZ_list(positions, symbols):
         xyz_list.append(xyz)
     return xyz_list
 
+
+def convert_XYZ2Atoms(atoms_lst):
+    if IS_ASE is None:
+        raise ModuleNotFoundError("ASE not installed!")
+    from ase import Atoms
+    if not isinstance(atoms_lst, list):
+        atoms_lst = [atoms_lst]
+    out_atoms = []
+    positions = np.array([g.get_positions() for g in atoms_lst])
+    symbols = atoms_lst[0].get_symbols()
+    for p in positions:
+        a = Atoms(symbols=symbols, positions=p)
+        out_atoms.append(a)
+    return out_atoms
+
+
+def convert_Atoms2XYZ(atoms_lst):
+    if IS_ASE is None:
+        raise ModuleNotFoundError("ASE not installed!")
+    out_atoms = []
+    if not isinstance(atoms_lst, list):
+        atoms_lst = [atoms_lst]
+    symbols = atoms_lst[0].get_chemical_symbols()
+    for atoms in atoms_lst:
+        positions = atoms.get_positions()
+        a = XYZ(symbols=symbols, positions=positions)
+        out_atoms.append(a)
+    return out_atoms
 
 
 def normalize(v, tol=1e-12):
