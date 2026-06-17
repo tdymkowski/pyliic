@@ -122,11 +122,17 @@ def check_eckart_conditions(positions, masses, ref_idx=0, scaffold=None):
 
 def apply_eckart(traj: list[XYZ], ref_idx=0, scaffold=None):
     # get symbols
-    symbols = traj[ref_idx].get_symbols()
+    try:
+        symbols = traj[ref_idx].get_symbols()
+    except AttributeError:
+        symbols = traj[ref_idx].get_chemical_symbols()
     # get all positions
     positions = np.array([t.get_positions() for t in traj])
     # get masses
-    masses = traj[ref_idx].get_masses_amu()
+    try:
+        masses = traj[ref_idx].get_masses_amu()
+    except AttributeError:
+        masses = traj[ref_idx].get_masses()
 
     # apply translational eckart condition
     positions = translational_eckart(positions, masses)

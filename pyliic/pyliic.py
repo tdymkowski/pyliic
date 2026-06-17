@@ -210,7 +210,7 @@ def write_pyphspu_data(data, dirpath, filename="geometry_data.txt"):
 
             coord_str = " ".join(f"{x:>10.6f}" for x in coords)
 
-            f.write(f"{str(outpath):>40s} {coord_str}\n")
+            f.write(f"{str(outpath):>20s} {coord_str}\n")
 
     return outfile
         

@@ -36,7 +36,8 @@ class GeometryGenerator:
         n_images: int = 100,
         order=None,
         int_method: str = "pchip",
-        duplicate_tol: float = 1e-12):
+        duplicate_tol: float = 1e-12,
+        couple_proton_to_phi=False):
         self.q1 = q1
         self.q2 = q2
 
@@ -53,6 +54,13 @@ class GeometryGenerator:
         self.phi_max = phi_max
 
         self.symbols = react.get_symbols()
+
+        self.couple_proton_to_phi = couple_proton_to_phi
+        if self.moving_indices is not None:
+            self.moving_indices = list(self.moving_indices)
+            if not self.couple_proton_to_phi:
+                self.moving_indices = [idx for idx in self.moving_indices if idx != self.proton_idx]
+
 
         if self.q1 is not None:
             self.mode = "q1"
@@ -101,14 +109,12 @@ class GeometryGenerator:
                 raise ValueError("phi_min and phi_max cannot be None.")
         
             if self.dihedral_indices is None or self.moving_indices is None:
-                raise ValueError(
-                    "dihedral_indices and moving_indices are required for dihedral-only mode."
-                )
+                raise ValueError("dihedral_indices and moving_indices are required for dihedral-only mode.")
         
-            self.q = np.linspace(float(self.phi_min), float(self.phi_max), n_images)
+            self.q2_grid = np.linspace(float(self.phi_min), float(self.phi_max), n_images)
         
             self.traj = []
-            for phi in self.q:
+            for phi in self.q2_grid:
                 a = prod.copy()
                 a.set_dihedral(
                     *self.dihedral_indices,
