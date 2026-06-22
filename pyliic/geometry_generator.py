@@ -64,14 +64,14 @@ class GeometryGenerator:
 
         if self.q1 is not None:
             self.mode = "q1"
-        
+
             traj = liic(
                 react,
                 prod,
                 n_images=n_images,
                 order=order,
             )
-        
+
             self.traj = traj
             self.positions = np.array(
                 [g.get_positions() for g in traj],
@@ -152,6 +152,12 @@ class GeometryGenerator:
             raise NotImplementedError(
                 f"Unknown interpolation method: {int_method}"
             )
+    def smoothing_function(self, func="poly", **kwargs):
+        func = func.lower()
+        if func == "poly":
+            r_start = kwargs.get("r_start", 1.46)
+            r_full = kwargs.get("r_full", 1.20)
+            
 
     def _compute_q(self):
         if self.q1 == "r1":

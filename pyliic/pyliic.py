@@ -253,10 +253,10 @@ def main():
 
     q1_label = r"$s$"
     positions = np.array([g.get_positions() for g in geoms]) * ANG2AU
-    positions = reshape_positions_for_gmat(q1_fine, q2_fine, positions)
+    q1_fine, q2_fine, positions = reshape_positions_for_gmat(q1_fine, q2_fine, positions)
     n_q1 = len(q1_fine)
     n_q2 = len(q2_fine)
-    n_atoms = positions.shape[1]
+    n_atoms = positions.shape[2]
 #    positions = positions.reshape(n_q1, n_q2, n_atoms, 3)
 #    q1_fine *= ANG2AU
     q2_fine_rad = np.deg2rad(q2_fine)
@@ -288,7 +288,7 @@ def main():
     geoms2 = apply_eckart(geoms2)
     positions = np.array([g.get_positions() for g in geoms2]) * AMU2AU
     G = get_G_element(q2_fine, positions, masses, plot=True)
-    write_xyz_traj("traj_rot.xyz", geoms2)
+#    write_xyz_traj("traj_rot.xyz", geoms2)
 
     gen_licc = GeometryGenerator(
         react=react,
@@ -317,11 +317,11 @@ def main():
 
         geom_q1 = gen_licc(q1_f)
         geoms.append(geom_q1)
- 
+
     geoms = apply_eckart(geoms)
     positions = np.array([g.get_positions() for g in geoms]) * AMU2AU
-#    G = get_G_element(q1_fine, positions, masses, plot=True)
-    write_xyz_traj("traj_liic_r1.xyz", geoms)
+#    G = get_G_element(q1_fine, ,positions, masses, plot=True)
+#    write_xyz_traj("traj_liic_r1.xyz", geoms)
 
 
 #    q1_label = r"$r{O1H}$"

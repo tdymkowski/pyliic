@@ -3,35 +3,56 @@ import numpy as np
 import qdio.qd_file_op as qdop
 from scipy.interpolate import CubicSpline, PchipInterpolator
 import matplotlib.pyplot as plt
+from .data import AMU2AU
 
 
-def reshape_positions_for_gmat(q1, q2, positions):
-    positions0 = positions.copy()
-    n_q1 = len(q1)
-    n_q2 = len(q2)
-    n_atoms = positions.shape[1]
-    positions0 = positions0.reshape(n_q1, n_q2, n_atoms, 3)
-    return positions0
+def reshape_positions_for_gmat(q1_flat, q2_flat, positions):
+    q1_flat = np.asarray(q1_flat)
+    q2_flat = np.asarray(q2_flat)
+    positions = np.asarray(positions)
+
+    q1_unique = np.unique(q1_flat)
+    q2_unique = np.unique(q2_flat)
+
+    n_q1 = len(q1_unique)
+    n_q2 = len(q2_unique)
+    n_geoms, n_atoms, ndim = positions.shape
+
+    if n_geoms != n_q1 * n_q2:
+        raise ValueError(
+            f"Cannot reshape: got {n_geoms} geometries, but "
+            f"{n_q1} unique q1 values × {n_q2} unique q2 values = "
+            f"{n_q1 * n_q2} grid points."
+        )
+
+    positions_grid = np.zeros((n_q1, n_q2, n_atoms, ndim))
+
+    for k, (q1, q2) in enumerate(zip(q1_flat, q2_flat)):
+        i = np.where(q1_unique == q1)[0][0]
+        j = np.where(q2_unique == q2)[0][0]
+        positions_grid[i, j] = positions[k]
+
+    return q1_unique, q2_unique, positions_grid
 
 
-def get_dxdq_fd(q, positions, edge_order=2, axis=0):
+def _sort_q_and_positions(q, positions, axis=0):
     order = np.argsort(q)
     q = q[order]
     if any(np.diff(q) <= 0.):
         raise ValueError(f"Internal coordinate must be striclty increasing sequence!")
-    x = positions[order]
-    
+    x = np.take(positions, order, axis=axis)
+    return q, x
+
+
+def get_dxdq_fd(q, positions, edge_order=2, axis=0):
+    q, x = _sort_q_and_positions(q, positions, axis=axis)
     dxdq = np.gradient(x, q, axis=axis, edge_order=edge_order)
     return dxdq
 
 
 def get_dxdq_spline(q, positions, spline_type="cubic", axis=0, spline_kwargs={}):
     spline_methods = {"cubic": CubicSpline, "pchip": PchipInterpolator}
-    order = np.argsort(q)
-    q = q[order]
-    if any(np.diff(q) <= 0.):
-        raise ValueError(f"Internal coordinate must be striclty increasing sequence!")
-    x = positions[order]
+    q, x = _sort_q_and_positions(q, positions, axis=axis)
     spline_method = spline_methods[spline_type]
     spline = spline_method(q, x, axis=axis, **spline_kwargs)
     dxdq = spline.derivative(1)(q)
@@ -68,11 +89,16 @@ def get_dxdq(q, positions, method="cubic", axis=0, edge_order=2):
 def get_G_element(q, positions, masses, method="fd", axis=0, edge_order=2, plot=False, save=False):
     dxdq = get_dxdq(q, positions, method=method, axis=axis, edge_order=edge_order)
     invG = calc_inv_G_value(dxdq, masses)
+    print(invG/ AMU2AU)
     G = 1.0 / invG
     if plot:
-        plt.plot(q, G)
-        plt.xlabel("q")
-        plt.ylabel("G")
+        fig, (ax1, ax2) = plt.subplots(1, 2)
+        ax1.plot(q, G)
+        ax1.set_xlabel("q")
+        ax1.set_ylabel("G")
+        ax2.plot(q, invG / AMU2AU)
+        ax2.set_xlabel("q")
+        ax2.set_ylabel("invG")
         if save:
             plt.savefig("gelement.pdf")
         plt.show()
@@ -111,7 +137,6 @@ def plot_G_matrix(q1, q2, G, invG=None, **kwargs):
     if save:
         fig.savefig(filename, bbox_inches="tight")
 
-    plt.show()
 
 
     if invG is not None:
@@ -122,28 +147,44 @@ def plot_G_matrix(q1, q2, G, invG=None, **kwargs):
             (1, 1, "invG_phiphi"),
         ]
 
-        for a, b, title in components:
-            plt.figure()
-            plt.contourf(R, P, invG[:, :, a, b], levels=30)
-            plt.xlabel("r / bohr")
-            plt.ylabel("phi / rad")
-            plt.colorbar(label=title)
-            plt.title(title)
-            plt.tight_layout()
-            plt.show()
+        fig2, axes2 = plt.subplots(2, 2, figsize=kwargs.get("figsize", (10, 8)))
+        for ax, (a, b, title) in zip(axes2.flatten(), components):
+            contour2 = ax.contourf(R, P, invG[:, :, a, b], levels=levels, cmap=cmap)
+            ax.set_xlabel(q1_label)
+            ax.set_ylabel(q2_label)
+            fig2.colorbar(contour2, ax=ax, label=title)
+        fig2.tight_layout()
+
+    plt.show()
 
 
-def get_G_matrix(q1, q2, positions, masses, edge_order=2, method="cubic", plot=False, save_op=False, **kwargs):
-    print(positions.ndim)
+def get_G_matrix(q1, q2, positions, masses,
+                 edge_order=2,
+                 method="cubic",
+                 plot=False,
+                 plot_invg=False,
+                 save_op=False,
+                 **kwargs):
     n_q1, n_q2, n_atoms, ndim = positions.shape
 
-    dx_dq1 = get_dxdq(q1, positions, method=method, axis=0)
-    dx_dq2 = get_dxdq(q2, positions, method=method, axis=1)
+    dx_dq1 = get_dxdq(q1,
+                      positions,
+                      method=method,
+                      axis=0,
+                      edge_order=edge_order)
+    dx_dq2 = get_dxdq(q2,
+                      positions,
+                      method=method,
+                      axis=1,
+                      edge_order=edge_order)
     invG = np.zeros((n_q1, n_q2, 2, 2))
 
-    invG[:, :, 0, 0] = np.sum(masses[None, None, :, None] * dx_dq1 * dx_dq1, axis=(2, 3))
-    invG[:, :, 1, 1] = np.sum(masses[None, None, :, None] * dx_dq2 * dx_dq2, axis=(2, 3))
-    invG[:, :, 0, 1] = invG[:, :, 1, 0] = np.sum(masses[None, None, :, None] * dx_dq1 * dx_dq2, axis=(2, 3))
+    invG[:, :, 0, 0] = np.sum(masses[None, None, :, None] * dx_dq1 * dx_dq1,
+                              axis=(2, 3))
+    invG[:, :, 1, 1] = np.sum(masses[None, None, :, None] * dx_dq2 * dx_dq2,
+                              axis=(2, 3))
+    invG[:, :, 0, 1] = invG[:, :, 1, 0] = np.sum(masses[None, None, :, None] *
+                                                 dx_dq1 * dx_dq2, axis=(2, 3))
 
     G = np.linalg.inv(invG)
     if save_op:
@@ -162,10 +203,12 @@ def get_G_matrix(q1, q2, positions, masses, edge_order=2, method="cubic", plot=F
         print("G matrix written to: ")
         for name in names:
             print(f"{name:>15s}")
-    if plot:
+    if plot and not plot_invg:
         plot_G_matrix(q1, q2, G, **kwargs)
+    if plot_invg:
+        plot_G_matrix(q1, q2, G, invG=invG, **kwargs)
 
-    return G
+    return G, invG
 
 
 def read_G_matrix_operators(names=None, **kwargs):
@@ -183,16 +226,15 @@ def read_G_matrix_operators(names=None, **kwargs):
         if meta is None:
             meta = meta_read
         comps.append(op)
-    
+
     n_q1 = meta["dim"][0].size
     n_q2 = meta["dim"][1].size
-    
+
     q1 = np.linspace(meta["dim"][0].xmin, meta["dim"][0].xmax, n_q1)
     q2 = np.linspace(meta["dim"][1].xmin, meta["dim"][1].xmax, n_q2)
-    
+
     G = np.asarray(comps)               # (4, n_q1, n_q2)
     G = G.reshape(2, 2, n_q1, n_q2)    # (2, 2, n_q1, n_q2)
     G = np.moveaxis(G, (0, 1), (-2, -1))  # (n_q1, n_q2, 2, 2)
 
     plot_G_matrix(q1, q2, G, **kwargs)
-
