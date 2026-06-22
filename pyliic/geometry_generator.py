@@ -6,6 +6,19 @@ from .interpolation import liic
 from .utils import XYZ, compute_distance
 
 
+def remap_index_after_reorder(index, order):
+    if index is None:
+        return None
+    old_to_new = {old_idx: new_idx for new_idx, old_idx in enumerate(order)}
+    return old_to_new[index]
+
+
+def remap_indices_after_reorder(indices, order):
+    if indices is None:
+        return None
+    return [remap_index_after_reorder(index, order) for index in indices]
+
+
 def get_rdiff(atoms, proton_idx, atom1_idx, atom2_idx):
     pos = atoms.get_positions()
 
@@ -44,6 +57,14 @@ class GeometryGenerator:
         self.react = react
         self.prod = prod
 
+        if order is not None and q1 is not None:
+            order = list(order)
+            proton_idx = remap_index_after_reorder(proton_idx, order)
+            atom1_idx = remap_index_after_reorder(atom1_idx, order)
+            atom2_idx = remap_index_after_reorder(atom2_idx, order)
+            dihedral_indices = remap_indices_after_reorder(dihedral_indices, order)
+            moving_indices = remap_indices_after_reorder(moving_indices, order)
+
         self.proton_idx = proton_idx
         self.atom1_idx = atom1_idx
         self.atom2_idx = atom2_idx
@@ -73,6 +94,7 @@ class GeometryGenerator:
             )
 
             self.traj = traj
+            self.symbols = traj[0].get_symbols()
             self.positions = np.array(
                 [g.get_positions() for g in traj],
                 dtype=float,
@@ -202,11 +224,11 @@ class GeometryGenerator:
                 f"Requested q={q_requested:.12f} outside interpolation range "
                 f"[{qmin:.12f}, {qmax:.12f}]"
             )
-    
+
         q_eval = np.clip(q_requested, qmin, qmax)
-    
+
         pos = self.interpolator(q_eval)
-    
+
         geom = XYZ(
             symbols=self.symbols,
             positions=np.asarray(pos, dtype=float),
