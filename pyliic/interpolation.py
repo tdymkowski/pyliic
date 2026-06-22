@@ -20,8 +20,8 @@ def interpolate_bond(r0, r1, t):
 
 
 def liic(atoms0, atoms1, n_images=101, order=None):
-#    atoms0 = atoms0.copy()
-#    atoms1 = atoms1.copy()
+    atoms0 = atoms0.copy()
+    atoms1 = atoms1.copy()
     if order is not None:
         atoms0 = atoms0.reorder_atoms(order)
         atoms1 = atoms1.reorder_atoms(order)
